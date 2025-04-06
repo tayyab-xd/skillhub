@@ -2,6 +2,7 @@ import React, { useContext, useState } from "react";
 import { AppContext } from "../context/context";
 import { Search, Filter, ChevronDown } from "lucide-react";
 import { NavLink } from 'react-router-dom'
+import NavbarLearn from "../components/NavbarLearn";
 
 const CoursesPage = () => {
   const context = useContext(AppContext)
@@ -19,6 +20,8 @@ const CoursesPage = () => {
     context.dispatch({ type: 'FILTER_CATEGORY', payload: e.target.value })
   }
   return (
+    <>
+    <NavbarLearn/>
     <div className="min-h-screen bg-gray-900 text-white p-6">
       {/* Top Filter Bar */}
       <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
@@ -68,6 +71,7 @@ const CoursesPage = () => {
 
       </div>
     </div>
+    </>
   );
 };
 

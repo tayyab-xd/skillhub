@@ -4,6 +4,7 @@ import { AppContext } from '../context/context';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import NavbarLearn from '../components/NavbarLearn';
 
 
 function EditProfile() {
@@ -93,6 +94,8 @@ function EditProfile() {
   }
 
   return (
+    <>
+    <NavbarLearn/>
     <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white px-6">
       <div className="bg-gray-800 p-8 rounded-lg shadow-xl w-full max-w-4xl flex flex-col md:flex-row gap-8">
         <form onSubmit={handleSubmit} className="flex flex-col md:flex-row w-full gap-8">
@@ -207,6 +210,7 @@ function EditProfile() {
         </form>
       </div>
     </div>
+    </>
   );
 }
 

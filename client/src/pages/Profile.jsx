@@ -1,12 +1,15 @@
 import { Link } from 'react-router-dom';
 import { AppContext } from '../context/context';
 import { useContext } from 'react';
+import NavbarLearn from '../components/NavbarLearn';
 
 function Profile() {
   const context = useContext(AppContext)
   const user = context.state.profileData
   console.log(user)
   return (
+    <>
+    <NavbarLearn/>
     <div className="min-h-screen bg-gray-900 text-white py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto bg-gray-800 p-8 rounded-lg shadow-xl">
         {/* Profile Header */}
@@ -77,6 +80,7 @@ function Profile() {
 
       </div>
     </div>
+    </>
   );
 }
 

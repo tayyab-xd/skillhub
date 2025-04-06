@@ -5,6 +5,7 @@ import axios from 'axios';
 import { toast } from 'react-toastify';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trash2 } from 'lucide-react';
+import NavbarLearn from '../components/NavbarLearn';
 
 function SingleCourse() {
     const navigate = useNavigate();
@@ -142,6 +143,8 @@ function SingleCourse() {
     }
     
     return (
+        <>
+        <NavbarLearn/>
         <div className="min-h-screen bg-gray-900 text-white py-12 px-4 sm:px-6 lg:px-8">
             <div className="max-w-7xl mx-auto space-y-12">
                 {/* Course Details Section */}
@@ -273,6 +276,7 @@ function SingleCourse() {
                 </div>
             </div>
         </div>
+        </>
     );
 }
 
