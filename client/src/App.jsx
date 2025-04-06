@@ -5,7 +5,7 @@ import "react-toastify/dist/ReactToastify.css";
 import Learn from './pages/Learn'
 import Signup from './pages/Signup'
 import Login from './pages/Login'
-import UploadCourse from './pages/uploadCourse'
+import UploadCourse from './pages/UploadCourse'
 import NavbarLearn from './components/NavbarLearn'
 import Courses from './pages/Courses'
 import SingleCourse from './pages/SingleCourse';
