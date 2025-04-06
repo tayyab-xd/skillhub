@@ -19,5 +19,5 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use('/user',userRoute)
 app.use('/course',courseRoute)
 
-app.listen(3000);
+app.listen(process.env.PORT || 5000);
 ;
