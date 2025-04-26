@@ -9,8 +9,11 @@ const Appprovider = ({ children }) => {
         courses: [],
         filterCourses:[],
         populerCourses:[],
+        gigs:[],
+        filterGigs:[],
         loggedIn:false,
-        profileData:[]
+        profileData:[],
+        learnMode:false
     }
     const [state, dispatch] = useReducer(reducer, initialState)
 
@@ -26,13 +29,25 @@ const Appprovider = ({ children }) => {
         }
         fetchData()
     }, []);
+    //for gigs
+    useEffect(() => {
+        const fetchData = async() => {
+            try {
+                const response = await axios.get('http://localhost:3000/gig/all-gigs');
+                dispatch({ type: 'SET_GIGS', payload: response.data });
+            } catch(error) {
+                console.log(error);
+            }
+        }
+        fetchData()
+    }, [])
+    
 
     // for profile
     useEffect(() => {
         const fetchUser=async()=>{
             try {
                 const fetchData=await axios.get(`http://localhost:3000/user/profile/${localStorage.getItem('userId')}`)
-                // console.log(fetchData.data)
                 dispatch({type:'SET_PROFILE',payload:fetchData.data})
             } catch (error) {
                 console.log(error)
@@ -48,9 +63,13 @@ const Appprovider = ({ children }) => {
       }
     }, [])
     
+    const setMode=()=>{
+        console.log('hi')
+        dispatch({type:'SET_MODE'})
+    }
 
     return (
-        <AppContext.Provider value={{ state,dispatch }}>{children}</AppContext.Provider>
+        <AppContext.Provider value={{ state,setMode,dispatch }}>{children}</AppContext.Provider>
     )
 }
 

@@ -4,7 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trash2 } from 'lucide-react';
+import { Trash2,Pencil } from 'lucide-react';
 import NavbarLearn from '../components/NavbarLearn';
 
 function SingleCourse() {
@@ -18,7 +18,7 @@ function SingleCourse() {
     const [courseOwner, setCourseOwner] = useState(false);
     const [deleteLoading, setDeleteLoading] = useState(false)
 
-    //finding courses
+//finding courses and check owner
     useEffect(() => {
         const foundCourse = context.state.courses.find((item) => item._id === params.id);
         setCourse(foundCourse);
@@ -144,19 +144,26 @@ function SingleCourse() {
     
     return (
         <>
-        <NavbarLearn/>
+        {/* <NavbarLearn/> */}
         <div className="min-h-screen bg-gray-900 text-white py-12 px-4 sm:px-6 lg:px-8">
             <div className="max-w-7xl mx-auto space-y-12">
                 {/* Course Details Section */}
                 <div className="bg-gray-800 p-8 rounded-lg shadow-xl space-y-8 relative">
                     {courseOwner && (
-                        <div className="absolute top-4 right-4">
+                        <div className="flex gap-2 absolute top-4 right-4">
                             <button
                                 onClick={deleteCourse}
                                 className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition duration-300 shadow-lg"
                             >
                                 <Trash2 className="w-5 h-5" />
                                 {deleteLoading?'Deleting..':'Delete'}
+                            </button>
+                            <button
+                                onClick={()=>{navigate(`/edit-course`, { state: { id: course._id } })}}
+                                className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition duration-300 shadow-lg"
+                            >
+                                <Pencil className="w-5 h-5" />
+                                Edit
                             </button>
                         </div>
                     )}

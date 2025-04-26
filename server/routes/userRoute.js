@@ -8,12 +8,13 @@ const AWS = require('aws-sdk');
 const cloudinary = require('cloudinary').v2
 const fs = require("fs");
 require('dotenv').config();
+const mongoose=require("mongoose");
 
-// cloudinary.config({
-//   cloud_name: process.env.CLOUD_NAME,
-//   api_key: process.env.API_KEY,
-//   api_secret: process.env.API_SECRET,
-// })
+cloudinary.config({
+  cloud_name: process.env.CLOUD_NAME,
+  api_key: process.env.API_KEY,
+  api_secret: process.env.API_SECRET,
+})
 const s3 = new AWS.S3({
   endpoint: process.env.STORJ_ENDPOINT,
   accessKeyId: process.env.STORJ_ACCESS_KEY,
@@ -65,7 +66,10 @@ router.post('/login', async (req, res) => {
 
 router.get('/profile/:id', async (req, res) => {
   try {
-    const user = await userModel.findById(req.params.id).populate('courses').populate('coursesEnrolled');
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: "Invalid ID" });
+    }
+    const user = await userModel.findById(req.params.id).populate('courses').populate('gigs').populate('coursesEnrolled');
     if (!user) {
       return res.status(404).json({ msg: 'User not found' });
     }
@@ -76,7 +80,7 @@ router.get('/profile/:id', async (req, res) => {
   }
 });
 
-router.put('/updateUser/:id', auth, async (req, res) => {
+router.put('/updateUser/:id', auth, async (req, res) => { 
   try {
     const token = req.headers.authorization?.split(" ")[1];
     const verify = jwt.verify(token, process.env.JWT_SECRET);
@@ -84,7 +88,9 @@ router.put('/updateUser/:id', auth, async (req, res) => {
     if (verify.userId !== req.params.id) {
       return res.status(401).json({ msg: 'Unauthorized user' });
     }
-
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: "Invalid ID" });
+    }
     const oldData = await userModel.findById(req.params.id);
     if (!oldData) {
       return res.status(404).json({ msg: 'User not found' });
@@ -107,6 +113,16 @@ router.put('/updateUser/:id', auth, async (req, res) => {
       const fileName = `profilePics/${Date.now()}_${image.name}`;
       const fileStream = fs.createReadStream(image.tempFilePath);
     
+    if (oldData.profilePicId) {
+      try {
+        await s3.deleteObject({
+          Bucket: process.env.BUCKET_NAME,
+          Key: oldData.profilePicId
+        }).promise(); 
+      } catch (err) {
+        console.error('Delete failed:', err);
+      }
+    }
       const uploadedImage = await s3.upload({
         Bucket: process.env.BUCKET_NAME,
         Key: fileName,
@@ -114,7 +130,6 @@ router.put('/updateUser/:id', auth, async (req, res) => {
         ContentType: image.mimetype,
         ACL: 'public-read' 
       }).promise();
-      console.log(uploadedImage)
     
       newUser.profilePic = uploadedImage.Location; 
       newUser.profilePicId = uploadedImage.Key;   
@@ -137,6 +152,10 @@ router.put('/updateUser/:id', auth, async (req, res) => {
 
 router.put('/resetPassword/:id', async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      console.log('2')
+      return res.status(400).json({ message: "Invalid ID" });
+    }
     const user = await userModel.findById(req.params.id)
     const hash = await bcrypt.hash(req.body.password, 10)
     const updatedUser = await userModel.findByIdAndUpdate(req.params.id, { password: hash }, { new: true })
@@ -154,7 +173,10 @@ router.delete('/:profileId/deleteprofilepic', auth, async (req, res) => {
     if (verify.userId !== req.params.profileId) {
       return res.status(401).json({ msg: 'Unauthorized User' });
     }
-
+    if (!mongoose.Types.ObjectId.isValid(req.params.profileId)) {
+      console.log('3')
+      return res.status(400).json({ message: "Invalid ID" });
+    }
     const user = await userModel.findById(req.params.profileId);
     if (!user) {
       return res.status(404).json({ msg: 'User not found' });

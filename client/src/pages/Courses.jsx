@@ -11,7 +11,7 @@ const CoursesPage = () => {
   const [title, setTitle] = useState('')
   const [category, setCategory] = useState('')
   
-  const titleFitler = (e) => {
+  const titlefilter = (e) => {
     setTitle(e.target.value)
     context.dispatch({ type: 'FILTER_TITLE', payload: e.target.value })
   }
@@ -21,13 +21,13 @@ const CoursesPage = () => {
   }
   return (
     <>
-    <NavbarLearn/>
+    {/* <NavbarLearn/> */}
     <div className="min-h-screen bg-gray-900 text-white p-6">
       {/* Top Filter Bar */}
       <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
         <div className="relative w-full md:w-1/3">
           <input
-            type="text" name="title" value={title} onChange={titleFitler}
+            type="text" name="title" value={title} onChange={titlefilter}
             placeholder="Search courses..."
             className="w-full p-3 pl-10 bg-gray-800 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
           />

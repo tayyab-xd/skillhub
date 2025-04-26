@@ -6,6 +6,11 @@ const auth = require('../middlewares/authCheck')
 const fs = require("fs");
 const userModel = require('../model/userModel');
 const AWS = require('aws-sdk');
+const ffmpeg = require('fluent-ffmpeg');
+const ffmpegPath = require('ffmpeg-static');
+
+// Set FFmpeg path for fluent-ffmpeg
+ffmpeg.setFfmpegPath(ffmpegPath);
 
 const cloudinary = require('cloudinary').v2
 require('dotenv').config()
@@ -23,70 +28,78 @@ const s3 = new AWS.S3({
     signatureVersion: 'v4',
 });
 
+const progressMap = {}; // Store progress for each upload (keyed by userId or unique token)
 
 router.post("/upload", auth, async (req, res) => {
+    const token = req.headers.authorization?.split(" ")[1];
+    const verify = jwt.verify(token, process.env.JWT_SECRET);
+    const userId = verify.userId;
+
     try {
+        progressMap[userId] = { progress: 0, message: "Starting upload..." };
+
         // Validate required fields
         const { title, description, category } = req.body;
         if (!title || !description || !category || !req.files?.thumbnail || !req.files?.video) {
             return res.status(400).json({ msg: "Missing required fields" });
         }
 
-        // Verify JWT
-        const token = req.headers.authorization?.split(" ")[1];
-        const verify = jwt.verify(token, process.env.JWT_SECRET);
-
-        // Validate file types
-        const thumbnailMimeType = req.files.thumbnail.mimetype;
-        const videoMimeType = req.files.video.mimetype;
-        
-        if (!thumbnailMimeType.startsWith('image/')) {
-            return res.status(400).json({ msg: "Thumbnail must be an image file" });
-        }
-        
-        if (!videoMimeType.startsWith('video/')) {
-            return res.status(400).json({ msg: "Uploaded file must be a video" });
-        }
-
         // Upload thumbnail
+        progressMap[userId] = { progress: 10, message: "Uploading thumbnail..." };
         let image;
         try {
             const fileName = `CourseThumbnail/${Date.now()}_${req.files.thumbnail.name.replace(/\s+/g, '_')}`;
             const fileStream = fs.createReadStream(req.files.thumbnail.tempFilePath);
-            
+
             image = await s3.upload({
                 Bucket: process.env.BUCKET_NAME,
                 Key: fileName,
                 Body: fileStream,
-                ContentType: thumbnailMimeType,
+                ContentType: req.files.thumbnail.mimetype,
                 ACL: 'public-read'
             }).promise();
-            
+
             fs.unlinkSync(req.files.thumbnail.tempFilePath);
         } catch (error) {
             console.error("Thumbnail upload error:", error);
             return res.status(500).json({ msg: "Error uploading thumbnail", error: error.message });
         }
 
-        // Upload video
+        // Compress and upload video
+        progressMap[userId] = { progress: 30, message: "Compressing video..." };
         let video;
         try {
             const videoFileName = `CourseVideos/${Date.now()}_${req.files.video.name.replace(/\s+/g, '_')}`;
-            const videoStream = fs.createReadStream(req.files.video.tempFilePath);
-            
+            const compressedVideoPath = `./tmp/${Date.now()}_compressed.mp4`;
+
+            // Compress video using FFmpeg
+            await new Promise((resolve, reject) => {
+                ffmpeg(req.files.video.tempFilePath)
+                    .output(compressedVideoPath)
+                    .videoCodec('libx264')
+                    .size('1280x720')
+                    .outputOptions('-crf 30')
+                    .on('end', resolve)
+                    .on('error', reject)
+                    .run();
+            });
+
+            progressMap[userId] = { progress: 70, message: "Uploading video..." };
+
+            // Upload compressed video to S3
+            const videoStream = fs.createReadStream(compressedVideoPath);
+
             video = await s3.upload({
                 Bucket: process.env.BUCKET_NAME,
                 Key: videoFileName,
                 Body: videoStream,
-                ContentType: videoMimeType,
+                ContentType: 'video/mp4',
                 ACL: 'public-read'
             }).promise();
-            
+
             fs.unlinkSync(req.files.video.tempFilePath);
-            
-            
+            fs.unlinkSync(compressedVideoPath);
         } catch (error) {
-            // Clean up thumbnail if video upload fails
             if (image) {
                 await s3.deleteObject({
                     Bucket: process.env.BUCKET_NAME,
@@ -97,33 +110,41 @@ router.post("/upload", auth, async (req, res) => {
             return res.status(500).json({ msg: "Error uploading video", error: error.message });
         }
 
-        // Create course in database
+        progressMap[userId] = { progress: 90, message: "Saving course to database..." };
+
         const course = await courseModel.create({
             title,
             description,
             category,
-            userId: verify.userId,
+            userId,
             thumbnail: image.Location,
             thumbnailId: image.Key,
             video: video.Location,
             videoId: video.Key
         });
 
-        // Update user's courses
-        await userModel.findByIdAndUpdate(verify.userId, {
+        await userModel.findByIdAndUpdate(userId, {
             $push: { courses: course._id }
         });
 
-        console.log('New course uploaded:', course._id);
-        res.status(201).json({ 
-            msg: "Course Uploaded Successfully",course});
+        progressMap[userId] = { progress: 100, message: "Upload complete!" };
+
+        res.status(201).json({ msg: "Course Uploaded Successfully", course });
     } catch (error) {
         console.error("Upload Error:", error);
-        res.status(500).json({ 
-            msg: "Server Error", 
-            error: process.env.NODE_ENV === 'development' ? error.message : undefined
-        });
+        res.status(500).json({ msg: "Server Error", error: error.message });
+    } finally {
+        delete progressMap[userId]; // Clean up progress tracking
     }
+});
+
+router.get("/upload-progress", auth, (req, res) => {
+    const token = req.headers.authorization?.split(" ")[1];
+    const verify = jwt.verify(token, process.env.JWT_SECRET);
+    const userId = verify.userId;
+
+    const progress = progressMap[userId] || { progress: 0, message: "No upload in progress" };
+    res.json(progress);
 });
 
 router.get('/all-courses', async (req, res) => {
@@ -319,6 +340,121 @@ router.delete('/deletecourse/:courseId', auth, async (req, res) => {
     } catch (error) {
         console.error("Delete Course Error:", error);
         res.status(500).json({ msg: "Server Error", error: error.message });
+    }
+});
+
+router.put('/editcourse/:courseId', auth, async (req, res) => {
+    try {
+        const course = await courseModel.findById(req.params.courseId);
+        if (!course) return res.status(404).json({ msg: 'Course not found' });
+
+        const token = req.headers.authorization?.split(" ")[1];
+        const verify = jwt.verify(token, process.env.JWT_SECRET);
+        if (verify.userId !== course.userId.toString()) {
+            return res.status(403).json({ msg: "Unauthorized User" });
+        }
+
+        const newData = {
+            title: req.body.title || course.title,
+            category: req.body.category || course.category,
+            description: req.body.description || course.description,
+        };
+
+        let updatedImage;
+        if (req.files?.thumbnail) {
+            try {
+                await s3.deleteObject({
+                    Bucket: process.env.BUCKET_NAME,
+                    Key: course.thumbnailId
+                }).promise();
+            } catch (err) {
+                console.error('Thumbnail delete failed from Storj:', err);
+            }
+
+            try {
+                const fileName = `CourseThumbnail/${Date.now()}_${req.files.thumbnail.name.replace(/\s+/g, '_')}`;
+                const fileStream = fs.createReadStream(req.files.thumbnail.tempFilePath);
+
+                updatedImage = await s3.upload({
+                    Bucket: process.env.BUCKET_NAME,
+                    Key: fileName,
+                    Body: fileStream,
+                    ContentType: req.files.thumbnail.mimetype,
+                    ACL: 'public-read'
+                }).promise();
+
+                fs.unlinkSync(req.files.thumbnail.tempFilePath);
+                newData.thumbnailId = updatedImage.Key;
+            } catch (error) {
+                console.error("Thumbnail upload error:", error);
+                return res.status(500).json({ msg: "Error uploading thumbnail", error: error.message });
+            }
+        }
+
+        let updatedVideo;
+        if (req.files?.video) {
+            try {
+                await s3.deleteObject({
+                    Bucket: process.env.BUCKET_NAME,
+                    Key: course.videoId
+                }).promise();
+            } catch (err) {
+                console.error('Video delete failed from Storj:', err);
+            }
+
+            try {
+                const videoFileName = `CourseVideos/${Date.now()}_${req.files.video.name.replace(/\s+/g, '_')}`;
+                const compressedVideoPath = `./tmp/${Date.now()}_compressed.mp4`;
+
+                // Compress video using FFmpeg
+                await new Promise((resolve, reject) => {
+                    ffmpeg(req.files.video.tempFilePath)
+                        .output(compressedVideoPath)
+                        .videoCodec('libx264')
+                        .size('1280x720') // Resize to 720p
+                        .outputOptions('-crf 30') // Compression level
+                        .on('end', resolve)
+                        .on('error', reject)
+                        .run();
+                });
+
+                // Upload compressed video to S3
+                const videoStream = fs.createReadStream(compressedVideoPath);
+
+                updatedVideo = await s3.upload({
+                    Bucket: process.env.BUCKET_NAME,
+                    Key: videoFileName,
+                    Body: videoStream,
+                    ContentType: 'video/mp4',
+                    ACL: 'public-read'
+                }).promise();
+
+                // Clean up temporary files
+                fs.unlinkSync(req.files.video.tempFilePath);
+                fs.unlinkSync(compressedVideoPath);
+
+                newData.videoId = updatedVideo.Key;
+            } catch (error) {
+                // Clean up uploaded thumbnail if video upload fails
+                if (updatedImage) {
+                    await s3.deleteObject({
+                        Bucket: process.env.BUCKET_NAME,
+                        Key: updatedImage.Key
+                    }).promise();
+                }
+
+                console.error("Video upload error:", error);
+                return res.status(500).json({ msg: "Error uploading video", error: error.message });
+            }
+        }
+
+        const updatedCourse = await courseModel.findByIdAndUpdate(req.params.courseId, newData, { new: true });
+        console.log('Course updated');
+        res.json(updatedCourse);
+
+    } catch (err) {
+        console.error("Edit course failed:", err);
+        res.status(500).json({ msg: "Internal Server Error", error: err.message });
     }
 });
 

@@ -4,9 +4,7 @@ const courseSchema=mongoose.Schema({
     title:String,
     description:String,
     category:String,
-    thumbnail:String,
     thumbnailId:String,
-    video:String,
     videoId:String,
     students:[{
       userId:{type:mongoose.Schema.Types.ObjectId,ref:'User'},

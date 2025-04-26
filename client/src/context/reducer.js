@@ -5,7 +5,13 @@ export const reducer = (state, action) => {
                 ...state,
                 courses: action.payload,
                 filterCourses: action.payload,
-                populerCourses:action.payload.slice(0,1)
+                populerCourses:action.payload.slice(0,4)
+            }
+        case 'SET_GIGS':
+            return {
+                ...state,
+                gigs: action.payload,
+                filterGigs: action.payload,
             }
         case 'LOGGED_IN':
             return {
@@ -31,6 +37,11 @@ export const reducer = (state, action) => {
                 filterCourses: state.courses.filter((item) =>
                     item.category.toLowerCase().includes(action.payload.toLowerCase()))
             };
+        case 'SET_MODE':
+            return{
+                ...state,
+                learnMode:!state.learnMode
+            }
         
         default:
             return state

@@ -1,10 +1,14 @@
-import React, { useContext } from 'react';
-import { NavLink } from 'react-router-dom';
+import React, { useContext, useEffect } from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { AppContext } from '../context/context';
+import { LogOut } from 'lucide-react';
 
 function NavbarLearn() {
+    const navigate=useNavigate()
     const context=useContext(AppContext)
     const loggedIn=context.state.loggedIn
+    const mode=context.state.learnMode
+    const setMode=context.setMode
     const dispatch=context.dispatch
     const logout = () => {
         localStorage.removeItem('token');
@@ -12,16 +16,27 @@ function NavbarLearn() {
         localStorage.removeItem('name');
         localStorage.removeItem('userId');
         dispatch({type:'LOGGED_IN',payload:false})
+        navigate('/login')
     }
+    //check login/logout
+    useEffect(() => {
+        if (!context.state.loggedIn) {
+            navigate('/login')
+        }else{
+            navigate(mode ? '/learn' : '/earn'); 
+        }
+    }, [mode,context.state])
     return (
-        <nav className="bg-black px-6 py-4 flex justify-between items-center shadow-md sticky top-0 z-50">
+        <nav className="bg-black px-6 py-4 flex justify-between items-center shadow-md h-24 sticky top-0 z-50">
             {/* Logo */}
-            <img className='h-16' src="../public/logo.png" alt="" />
+            <NavLink to={mode?'/learn':'/earn'}>
+            <img className='h-24' src="../public/logo.jpeg" alt="" />
+            </NavLink>
             {/* Navigation Links */}
             {loggedIn && <ul className="flex space-x-6 text-gray-400 ">
                 <li>
                     <NavLink
-                        to="/"
+                        to={mode?'/learn':'/earn'}
                         className={({ isActive }) => isActive ? "text-white" : "hover:text-white transition-colors duration-300"}
                     >
                         Home
@@ -29,18 +44,18 @@ function NavbarLearn() {
                 </li>
                 <li>
                     <NavLink
-                        to="courses"
+                        to={mode?'Courses':'Gigs'}
                         className={({ isActive }) => isActive ? "text-white" : "hover:text-white transition-colors duration-300"}
                     >
-                        Courses
+                        {mode?'Courses':'Gigs'}
                     </NavLink>
                 </li>
                 <li>
                     <NavLink
-                        to="upload"
+                        to={mode?'upload':'UploadGig'}
                         className={({ isActive }) => isActive ? "text-white" : "hover:text-white transition-colors duration-300"}
                     >
-                        Upload Course
+                        {mode?'Upload Course':'Upload Gig'}
                     </NavLink>
                 </li>
                 <li>
@@ -60,8 +75,8 @@ function NavbarLearn() {
                 </NavLink>
                 {/* Switch Mode Button */}
                 <NavLink >
-                    <button className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-transform transform hover:scale-105 shadow-lg">
-                        Earn Mode (coming soon)
+                    <button onClick={setMode} className="bg-blue-600 w-40 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-transform transform hover:scale-105 shadow-lg">
+                        {mode?'Learn Mode':'Earn Mode'}
                     </button>
                 </NavLink>
             </div>}

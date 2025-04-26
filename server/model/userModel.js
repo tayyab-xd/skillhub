@@ -10,6 +10,10 @@ const userSchema = mongoose.Schema({
     coursesEnrolled: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Course'
+    }],   
+    gigs: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Gig'
     }],
     courses: [{
         type: mongoose.Schema.Types.ObjectId,

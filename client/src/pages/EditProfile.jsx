@@ -4,6 +4,7 @@ import { AppContext } from '../context/context';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import imageCompression from 'browser-image-compression';
 import NavbarLearn from '../components/NavbarLearn';
 
 
@@ -32,14 +33,31 @@ function EditProfile() {
     });
   };
 
-  const handleImage = (e) => {
+  const handleImage = async (e) => {
     const file = e.target.files[0];
-    setUser({
-      ...user,
-      profilePic: file
-    });
-    setImagePreview(URL.createObjectURL(file));
+    if (!file) return;
+  
+    const options = {
+      maxSizeMB: 1.5,
+      initialQuality: 0.8,
+      useWebWorker: true,
+    };
+  
+    try {
+      const compressedBlob = await imageCompression(file, options);
+      const compressedFile = new File([compressedBlob], file.name, { type: file.type });
+  
+      setUser({
+        ...user,
+        profilePic: compressedFile
+      });
+      setImagePreview(URL.createObjectURL(compressedFile));
+    } catch (error) {
+      console.error("Image compression failed:", error);
+    }
   };
+  
+  
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -95,7 +113,7 @@ function EditProfile() {
 
   return (
     <>
-    <NavbarLearn/>
+    {/* <NavbarLearn/> */}
     <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white px-6">
       <div className="bg-gray-800 p-8 rounded-lg shadow-xl w-full max-w-4xl flex flex-col md:flex-row gap-8">
         <form onSubmit={handleSubmit} className="flex flex-col md:flex-row w-full gap-8">

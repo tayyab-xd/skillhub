@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 
 function PopularCourses() {
     const context = useContext(AppContext)
-    const courses = context.state.filterCourses
+    const courses = context.state.populerCourses
     return (
         <section className="bg-black text-white py-12 px-6">
             <div className="flex justify-between items-center mb-6">

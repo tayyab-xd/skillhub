@@ -9,7 +9,7 @@ function Profile() {
   console.log(user)
   return (
     <>
-    <NavbarLearn/>
+    {/* <NavbarLearn/> */}
     <div className="min-h-screen bg-gray-900 text-white py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto bg-gray-800 p-8 rounded-lg shadow-xl">
         {/* Profile Header */}
@@ -75,6 +75,24 @@ function Profile() {
             </div>
           ) : (
             <p className="text-gray-400 text-sm">No courses uploaded.</p>
+          )}
+        </div>
+        <div className="mt-10">
+          <h3 className="text-2xl font-semibold border-b pb-2 mb-4">Your Gigs</h3>
+
+          {user.gigs && user.gigs.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {user.gigs.map((item, i) => (
+                <div key={i} className="bg-gray-700 p-4 rounded-lg transition-transform duration-300">
+                  <Link to={`/singlegig /${item._id}`} className="text-blue-500 hover:underline hover:text-blue-700 transition duration-300">
+                    <h4 className="text-lg font-semibold">{item.title}</h4>
+                  </Link>
+                  <p className="text-gray-400 text-sm">{item.category}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-400 text-sm">No gigs uploaded.</p>
           )}
         </div>
 
